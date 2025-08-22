@@ -240,6 +240,31 @@
           <label class="block text-sm font-medium text-gray-700">Email (for receipt)</label>
           <input id="buyerEmail" type="email" class="input" placeholder="you@example.com" required />
         </div>
+
+        <!-- Billing address -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700">Billing Street</label>
+            <input id="billingStreet" class="input" placeholder="123 Main St" required />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">City</label>
+            <input id="billingCity" class="input" placeholder="City" required />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">State / Province</label>
+            <input id="billingState" class="input" placeholder="State" required />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Postal / ZIP</label>
+            <input id="billingZip" class="input" placeholder="Postal or ZIP" required />
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700">Country</label>
+            <input id="billingCountry" class="input" placeholder="Country" required />
+          </div>
+        </div>
+
         <button id="payBtn" class="w-full py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">Pay $<span id="modalTotal">0.00</span></button>
         <p class="text-xs text-gray-500 text-center">This is a dummy checkout for demonstration only. No payment will be taken.</p>
       </form>
@@ -294,10 +319,10 @@
         return;
       }
 
-      let total = 0;
+      let subtotal = 0;
       cart.forEach(item => {
         const line = item.price * item.qty;
-        total += line;
+        subtotal += line;
         cartItems.innerHTML += `
           <div class="flex items-center justify-between py-2 border-b border-gray-200 last:border-none">
             <div>
@@ -315,6 +340,27 @@
       });
 
       cartCount.textContent = cart.reduce((s, i) => s + i.qty, 0);
+
+      // Shipping: base $7.49, but rounded up to $8.00 (charity round-up)
+      const shippingBase = 7.49;
+      const shippingRounded = 8.00; // display value (rounded up for charity)
+      const shippingNote = 'rounded up for charity';
+
+      const total = subtotal + shippingRounded;
+
+      // Render subtotal + shipping in the cart area
+      cartItems.innerHTML += `
+        <div class="py-3 border-t border-gray-200 mt-2">
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-600">Subtotal</div>
+            <div class="font-medium">$${subtotal.toFixed(2)}</div>
+          </div>
+          <div class="flex items-center justify-between mt-2">
+            <div class="text-sm text-gray-600">Shipping <span class="text-xs text-gray-400">(${shippingNote})</span></div>
+            <div class="font-medium">$${shippingRounded.toFixed(2)}</div>
+          </div>
+        </div>`;
+
       cartTotal.textContent = total.toFixed(2);
 
       // Update modal total too
@@ -362,9 +408,22 @@
       const name = document.getElementById('cardName').value;
       const email = document.getElementById('buyerEmail').value;
 
+      // Billing fields
+      const street = document.getElementById('billingStreet').value;
+      const city = document.getElementById('billingCity').value;
+      const state = document.getElementById('billingState').value;
+      const zip = document.getElementById('billingZip').value;
+      const country = document.getElementById('billingCountry').value;
+
       if (!luhnCheck(num)) { alert('Invalid card number (demo check)'); return; }
       if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(exp)) { alert('Invalid expiry (MM/YY)'); return; }
       if (!/^\d{3,4}$/.test(cvc)) { alert('Invalid CVC'); return; }
+
+      // Basic billing validation (demo)
+      if (!street.trim() || !city.trim() || !state.trim() || !zip.trim() || !country.trim()) {
+        alert('Please complete the billing address.');
+        return;
+      }
 
       // Simulate processing
       const btn = document.getElementById('payBtn');
@@ -372,7 +431,23 @@
       setTimeout(() => {
         btn.disabled = false; btn.textContent = 'Pay $' + document.getElementById('modalTotal').textContent;
         closeCheckout();
-        showToast('Payment processed successfully! (Demo)');
+
+        // For demo purposes, show a summary of billing info in the toast (brief)
+        const masked = '**** **** **** ' + num.replace(/\s+/g,'').slice(-4);
+        const total = document.getElementById('modalTotal').textContent;
+        const summary = `Paid ${total} • ${masked} • ${name} • ${city}, ${state}`;
+        showToast('Payment processed (demo) — ' + summary);
+
+        // Log full (non-sensitive) billing details to console for demonstration
+        console.log('Demo payment processed', {
+          amount: total,
+          cardName: name,
+          cardLast4: num.replace(/\s+/g,'').slice(-4),
+          buyerEmail: email,
+          billing: { street, city, state, zip, country },
+          cart: cart.slice()
+        });
+
         clearCart();
       }, 1200);
     }
